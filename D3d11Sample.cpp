@@ -28,8 +28,30 @@
 const wchar_t* const WINDOW_CLASS_NAME = L"WIN_FONT_RENDER_SAMPLE_D3D11";
 const wchar_t* const WINDOW_TITLE = L"WinFontRender Direct3D 11 Sample";
 const uvec2 DISPLAY_SIZE = uvec2(1280, 720);
+const float MARGIN = 32.f;
+const float TEXT_WIDTH = DISPLAY_SIZE.x - MARGIN *2.f;
 typedef uint16_t INDEX_TYPE;
 const DXGI_FORMAT INDEX_BUFFER_FORMAT = DXGI_FORMAT_R16_UINT;
+
+const wchar_t* const TEXT_TO_DISPLAY =
+    L"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin purus ipsum, "
+    L"ultricies sed ipsum sit amet, dignissim consequat risus. Pellentesque habitant "
+    L"morbi tristique senectus et netus et malesuada fames ac turpis egestas. Aliquam "
+    L"in rhoncus magna. Aliquam erat volutpat. Nunc dictum odio non erat consectetur "
+    L"fermentum. Phasellus et justo ut purus imperdiet viverra. Curabitur a iaculis "
+    L"quam, ac egestas odio. Morbi condimentum elit diam, nec viverra nibh eleifend ac. "
+    L"Donec eu nibh ac massa ultrices imperdiet. Donec metus mauris, varius sed commodo "
+    L"nec, cursus quis nibh. Sed bibendum vestibulum nulla eget tempor. Morbi vel ipsum "
+    L"in ex scelerisque scelerisque. Curabitur varius tortor in magna sagittis, id "
+    L"eleifend orci cursus. Vivamus accumsan euismod dolor, in aliquam lorem sollicitudin nec. ";
+
+const wchar_t* const ORIGINAL_FONT_FACE_NAME = L"Arial";
+const int ORIGINAL_FONT_SIZE = 32;
+const uint32_t ORIGINAL_FONT_FLAGS = SFontDesc::FLAG_BOLD;
+
+constexpr uint32_t VB_FLAGS = VERTEX_BUFFER_FLAG_USE_INDEX_BUFFER_16BIT | VERTEX_BUFFER_FLAG_TRIANGLE_STRIP_WITH_RESTART_INDEX;
+const uint32_t DISPLAY_FONT_FLAGS = CFont::FLAG_WRAP_WORD | CFont::FLAG_HLEFT | CFont::FLAG_VTOP;
+const float DISPLAY_FONT_SIZE = 32.f;
 
 HINSTANCE g_Instance;
 
@@ -86,13 +108,17 @@ private:
     CComPtr<ID3D11InputLayout> m_InputLayout;
     CComPtr<ID3D11VertexShader> m_MainVs;
     CComPtr<ID3D11PixelShader> m_MainPs;
+    std::unique_ptr<CFont> m_Font;
     CComPtr<ID3D11Texture2D> m_Texture;
     CComPtr<ID3D11ShaderResourceView> m_TextureSRV;
     CComPtr<ID3D11Buffer> m_VertexBuffer;
     CComPtr<ID3D11Buffer> m_IndexBuffer;
+    size_t m_IndexCount = 0;
 
+    void InitFont();
     void InitTexture();
     void InitVertexBuffer();
+    static void PostprocessVertices(SVertex* vertices, size_t count);
 };
 
 static std::unique_ptr<CApp> g_App;
@@ -218,6 +244,7 @@ void CApp::Init(HWND wnd)
     m_Ctx->OMSetDepthStencilState(m_DepthStencilState, 0);
     m_Ctx->OMSetBlendState(m_BlendState.p, nullptr, 0xffffffff);
 
+    InitFont();
     InitTexture();
     InitVertexBuffer();
 }
@@ -248,7 +275,7 @@ void CApp::Frame()
     ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
     m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
     
-    m_Ctx->DrawIndexed(5, 0, 0);
+    m_Ctx->DrawIndexed((UINT)m_IndexCount, 0, 0);
     
     rtv = nullptr;
     m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
@@ -256,20 +283,31 @@ void CApp::Frame()
     m_SwapChain->Present(1, 0);
 }
 
+void CApp::InitFont()
+{
+    m_Font = std::make_unique<CFont>();
+
+    SFontDesc fontDesc;
+    fontDesc.FaceName = ORIGINAL_FONT_FACE_NAME;
+    fontDesc.Height = ORIGINAL_FONT_SIZE;
+    fontDesc.Flags = ORIGINAL_FONT_FLAGS;
+
+    bool ok = m_Font->Init(fontDesc);
+    assert(ok);
+}
+
 void CApp::InitTexture()
 {
-    uvec2 textureSize = uvec2(4, 4);
-    uint8_t textureData[32*32] = {
-        255, 0, 255, 0,
-        0, 255, 0, 255,
-        255, 0, 255, 0,
-        0, 255, 0, 255,
-    };
-    uint32_t textureRowPitch = 4;
+    assert(m_Font);
+
+    uvec2 size = UVEC2_ZERO;
+    size_t rowPitch = 0;
+    const void* data = nullptr;
+    m_Font->GetTextureData(data, size, rowPitch);
 
     CD3D11_TEXTURE2D_DESC textureDesc = CD3D11_TEXTURE2D_DESC(
-        DXGI_FORMAT_A8_UNORM, textureSize.x, textureSize.y, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE);
-    D3D11_SUBRESOURCE_DATA initialData = {textureData, textureRowPitch, 0};
+        DXGI_FORMAT_A8_UNORM, size.x, size.y, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA initialData = {data, (UINT)rowPitch, 0};
     HRESULT hr = m_Dev->CreateTexture2D(&textureDesc, &initialData, &m_Texture);
     assert(SUCCEEDED(hr));
 
@@ -280,23 +318,37 @@ void CApp::InitTexture()
     assert(SUCCEEDED(hr));
 
     m_Ctx->PSSetShaderResources(0, 1, &m_TextureSRV.p);
+
+    m_Font->FreeTextureData();
 }
 
 void CApp::InitVertexBuffer()
 {
-    const uint32_t vertexCount = 4;
-    const SVertex vertices[] = {
-        { vec2(0.f, 0.f), vec2(0.f, 0.f), 0xFF0000FF },
-        { vec2(1.f, 0.f), vec2(1.f, 0.f), 0xFF00FF00 },
-        { vec2(0.f, 1.f), vec2(0.f, 1.f), 0xFFFF0000 },
-        { vec2(1.f, 1.f), vec2(1.f, 1.f), 0xFFFFFFFF },
-    };
-    const uint32_t indexCount = 5;
-    const INDEX_TYPE indices[] = {0, 1, 2, 3, 0xFFFF};
+    assert(m_Font);
 
+    size_t quadCount = m_Font->CalcQuadCount(TEXT_TO_DISPLAY, DISPLAY_FONT_SIZE, DISPLAY_FONT_FLAGS, TEXT_WIDTH);
+
+    size_t vertexCount = 0;
+    QuadCountToVertexCount<VB_FLAGS>(vertexCount, m_IndexCount, quadCount);
+
+    std::vector<SVertex> vertices(vertexCount);
+    std::vector<uint16_t> indices(m_IndexCount);
+
+    const vec2 pos = vec2(MARGIN, MARGIN);
+
+    SVertexBufferDesc fontVbDesc;
+    fontVbDesc.FirstPosition = &vertices[0].Pos;
+    fontVbDesc.FirstTexCoord = &vertices[0].TexCoord;
+    fontVbDesc.PositionStrideBytes = sizeof(SVertex);
+    fontVbDesc.TexCoordStrideBytes = sizeof(SVertex);
+    fontVbDesc.FirstIndex = indices.data();
+    m_Font->GetTextVertices<VB_FLAGS>(fontVbDesc, pos, TEXT_TO_DISPLAY, DISPLAY_FONT_SIZE, DISPLAY_FONT_FLAGS, TEXT_WIDTH);
+
+    PostprocessVertices(vertices.data(), vertices.size());
+    
     CD3D11_BUFFER_DESC vbDesc = CD3D11_BUFFER_DESC(
-        vertexCount * sizeof(SVertex), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
-    D3D11_SUBRESOURCE_DATA vbInitialData = {vertices};
+        (UINT)(vertexCount * sizeof(SVertex)), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA vbInitialData = {vertices.data()};
     HRESULT hr = m_Dev->CreateBuffer(&vbDesc, &vbInitialData, &m_VertexBuffer);
     assert(SUCCEEDED(hr));
 
@@ -305,12 +357,27 @@ void CApp::InitVertexBuffer()
     m_Ctx->IASetVertexBuffers(0, 1, &m_VertexBuffer.p, &vertexStride, &offset);
 
     CD3D11_BUFFER_DESC ibDesc = CD3D11_BUFFER_DESC(
-        indexCount * sizeof(INDEX_TYPE), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_IMMUTABLE);
-    D3D11_SUBRESOURCE_DATA ibInitialData = {indices};
+        (UINT)(m_IndexCount * sizeof(INDEX_TYPE)), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA ibInitialData = {indices.data()};
     hr = m_Dev->CreateBuffer(&ibDesc, &ibInitialData, &m_IndexBuffer);
     assert(SUCCEEDED(hr));
 
     m_Ctx->IASetIndexBuffer(m_IndexBuffer.p, INDEX_BUFFER_FORMAT, 0);
+}
+
+void CApp::PostprocessVertices(SVertex* vertices, size_t count)
+{
+    vec2 displaySizeInv = vec2(1.f / (float)DISPLAY_SIZE.x, 1.f / (float)DISPLAY_SIZE.y);
+
+    for(size_t i = 0; i < count; ++i)
+    {
+        // Transform Pos from source coordinate system, which is from left-top (0, 0) in pixels,
+        // to destination coordinate system, which is from left-bottom (-1, -1) to (1, 1).
+        vertices[i].Pos.x = vertices[i].Pos.x * (displaySizeInv.x * 2.f) - 1.f;
+        vertices[i].Pos.y = 1.f - vertices[i].Pos.y * (displaySizeInv.y * 2.f);
+        // Fill Color, as it was uninitialized before.
+        vertices[i].Color = 0xFFFFFFFF;
+    }
 }
 
 LRESULT WINAPI WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -368,6 +435,9 @@ static void Main2()
     const DWORD wndExStyle = 0;
 
     ivec2 pos = ivec2(CW_USEDEFAULT, CW_USEDEFAULT);
+    RECT tmpRect = {0, 0, (int)DISPLAY_SIZE.x, (int)DISPLAY_SIZE.y};
+    AdjustWindowRectEx(&tmpRect, wndStyle, FALSE, wndExStyle);
+    ivec2 size = ivec2(tmpRect.right - tmpRect.left, tmpRect.bottom - tmpRect.top);
 
     HWND wnd = CreateWindowEx(
         wndExStyle,
@@ -375,7 +445,7 @@ static void Main2()
         WINDOW_TITLE,
         wndStyle,
         pos.x, pos.y,
-        (int)DISPLAY_SIZE.x, (int)DISPLAY_SIZE.y,
+        size.x, size.y,
         NULL,
         NULL,
         g_Instance,

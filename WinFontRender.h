@@ -1220,6 +1220,14 @@ public:
     float GetKerning(wchar_t firstCh, wchar_t secondCh) const;
     float GetKerning(wchar_t firstCh, wchar_t secondCh, float fontSize) const { return GetKerning(firstCh, secondCh) * fontSize; }
 
+    /* Returns pointer and parameters of internal buffer with texture data.
+    Pixels are row-major, from top to bottom, from left to right.
+    Each pixel is single byte 0..255.
+    outRowPitch is step between rows, in bytes.
+    */
+    void GetTextureData(const void*& outData, uvec2& outSize, size_t& outRowPitch) const;
+    void FreeTextureData();
+
     float CalcSingleLineTextWidth(const wstr_view& text, float fontSize) const;
     /*
     Split text into lines. Call iteratively to get subsequent lines of text.
@@ -1269,6 +1277,10 @@ private:
     // Texture coordinates for drawing filled rectangle.
     vec2 m_FillTexCoords = VEC2_ZERO;
     float m_LineGap = 0.f;
+
+    uvec2 m_TextureSize;
+    size_t m_TextureRowPitch;
+    std::vector<uint8_t> m_TextureData;
 
     void SortKerningEntries();
 };
@@ -1705,8 +1717,8 @@ void CFont::GetTextVertices(const SVertexBufferDesc& vbDesc,
 #include <cassert>
 
 static void BlitGray8Bitmap(
-    uint8_t* dstBitmap, uint32_t dstRowPitch, const uvec2& dstPos,
-    const uint8_t* srcBitmap, uint32_t srcRowPitch, const uvec2& srcPos, const uvec2& size)
+    uint8_t* dstBitmap, size_t dstRowPitch, const uvec2& dstPos,
+    const uint8_t* srcBitmap, size_t srcRowPitch, const uvec2& srcPos, const uvec2& size)
 {
     assert(dstPos.x + size.x <= dstRowPitch);
     uint8_t* dst = dstBitmap + dstPos.y * dstRowPitch + dstPos.x;
@@ -2040,9 +2052,9 @@ bool CFont::Init(const SFontDesc& desc)
         return glyphInfo[lhs].BlackBoxSize.y > glyphInfo[rhs].BlackBoxSize.y;
     });
 
-    const uint32_t textureSizeX = (uint32_t)desc.Height * 8;
+    m_TextureSize.x = (uint32_t)desc.Height * 8;
     const bool pow2 = (desc.Flags & SFontDesc::FLAG_TEXTURE_POW2) != 0;
-    CSpritePacker packer{textureSizeX, 1, pow2};
+    CSpritePacker packer{m_TextureSize.x, 1, pow2};
     for(uint32_t i = 0; i < sortIndex.size(); ++i)
     {
         const size_t glyphIndex = sortIndex[i];
@@ -2050,17 +2062,17 @@ bool CFont::Init(const SFontDesc& desc)
         packer.AddSprite(glyphInfo[glyphIndex].TexturePos, glyphInfo[glyphIndex].BlackBoxSize);
     }
 
-    const uint32_t textureSizeY = packer.GetTextureSizeY();
-    const vec2 textureSizeInv = vec2(1.f / (float)textureSizeX, 1.f / (float)textureSizeY);
-    const uint32_t textureRowPitch = AlignUp<uint32_t>(textureSizeX, 4);
-    std::vector<uint8_t> textureData(textureRowPitch * textureSizeY);
+    m_TextureSize.y = packer.GetTextureSizeY();
+    const vec2 textureSizeInv = vec2(1.f / (float)m_TextureSize.x, 1.f / (float)m_TextureSize.y);
+    m_TextureRowPitch = AlignUp<uint32_t>(m_TextureSize.x, 4);
+    m_TextureData.resize(m_TextureRowPitch * m_TextureSize.y);
 
     for(size_t i = 1; i < CHAR_COUNT; ++i)
     {
         if(glyphInfo[i].HasSprite())
         {
             const uint32_t glyphDataRowPitch = AlignUp<uint32_t>(glyphInfo[i].BlackBoxSize.x, 4);
-            BlitGray8Bitmap(textureData.data(), textureRowPitch, glyphInfo[i].TexturePos,
+            BlitGray8Bitmap(m_TextureData.data(), m_TextureRowPitch, glyphInfo[i].TexturePos,
                 glyphData.data() + glyphInfo[i].DataOffset, glyphDataRowPitch, uvec2(0, 0), glyphInfo[i].BlackBoxSize);
             m_CharInfo[i].TexCoordsRect = vec4(
                 (float)glyphInfo[i].TexturePos.x * textureSizeInv.x,
@@ -2091,16 +2103,6 @@ bool CFont::Init(const SFontDesc& desc)
         if (!glyphInfo[i].GlyphExists())
             m_CharInfo[i] = m_CharInfo[L'?'];
     }
-
-    /*
-    CD3D11_TEXTURE2D_DESC textureDesc = CD3D11_TEXTURE2D_DESC(
-        DXGI_FORMAT_A8_UNORM, textureSizeX, textureSizeY, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE);
-    D3D11_SUBRESOURCE_DATA initialData = {textureData.data(), textureRowPitch, 0};
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = { textureDesc.Format, D3D_SRV_DIMENSION_TEXTURE2D };
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = 1;
-    m_Texture = make_unique<CCustomTexture>(devCtx, textureDesc, &initialData, srvDesc);
-    */
 
     return true;
 }
@@ -2146,6 +2148,28 @@ float CFont::CalcSingleLineTextWidth(const wstr_view& text, float fontSize) cons
         prevCh = currCh;
     }
     return textWidth * fontSize;
+}
+
+void CFont::GetTextureData(const void*& outData, uvec2& outSize, size_t& outRowPitch) const
+{
+    if(!m_TextureData.empty())
+    {
+        outData = m_TextureData.data();
+        outSize = m_TextureSize;
+        outRowPitch = m_TextureRowPitch;
+    }
+    else
+    {
+        outData = nullptr;
+        outSize = UVEC2_ZERO;
+        outRowPitch = 0;
+    }
+}
+
+void CFont::FreeTextureData()
+{
+    std::vector<uint8_t> tmp;
+    m_TextureData.swap(tmp);
 }
 
 bool CFont::LineSplit(
