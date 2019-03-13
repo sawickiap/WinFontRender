@@ -1,9 +1,11 @@
-#include "WinFontRender.h"
-
 #define STRICT
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #define VC_EXTRALEAN
+
+#define WIN_FONT_RENDER_IMPLEMENTATION
+#include "WinFontRender.h"
+
 #include <Windows.h>
 
 #include <atlbase.h> // for CComPtr
