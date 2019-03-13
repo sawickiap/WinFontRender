@@ -13,14 +13,12 @@
 
 #include <vector>
 #include <string>
-#include <algorithm>
-#include <exception>
 #include <memory>
 
 #include <cstdint>
-#include <cstdio>
 #include <cstddef>
 #include <cstdlib>
+
 #include <cassert>
 
 #include <dxgi1_6.h>
