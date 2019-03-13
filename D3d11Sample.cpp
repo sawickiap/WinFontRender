@@ -66,6 +66,9 @@ const uint32_t FONT_CREATE_FLAGS = SFontDesc::FLAG_BOLD;
 const uint32_t FONT_DISPLAY_FLAGS = CFont::FLAG_WRAP_WORD | CFont::FLAG_HLEFT | CFont::FLAG_VTOP;
 const float FONT_DISPLAY_SIZE = 30.f;
 
+const vec4 BACKGROUND_COLOR = vec4(0.f, 0.f, 0.333f, 1.f); // (r, g, b, a)
+const uint32_t TEXT_COLOR = 0xFFE0E0E0; // 0xAABBGGRR
+
 class CCoInitializeGuard
 {
 public:
@@ -174,8 +177,7 @@ void CApp::Exit()
 
 void CApp::Frame()
 {
-    vec4 clearColor = vec4(0.f, 0.f, 0.333f, 1.f);
-    m_Ctx->ClearRenderTargetView(m_SwapChainRTV, clearColor);
+    m_Ctx->ClearRenderTargetView(m_SwapChainRTV, BACKGROUND_COLOR);
 
     ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
     m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
@@ -426,7 +428,7 @@ void CApp::PostprocessVertices(SVertex* vertices, size_t count)
         vertices[i].Pos.y = 1.f - vertices[i].Pos.y * (displaySizeInv.y * 2.f);
 
         // Fill Color, as it was uninitialized before.
-        vertices[i].Color = 0xFFE0E0E0;
+        vertices[i].Color = TEXT_COLOR;
     }
 }
 
