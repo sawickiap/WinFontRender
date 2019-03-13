@@ -16,6 +16,9 @@
   <ItemGroup>
     <ClInclude Include="WinFontRender.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="D3d11Sample.rc" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{B8BEA454-91CC-4D24-8956-403530746B9F}</ProjectGuid>

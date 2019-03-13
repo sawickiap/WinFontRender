@@ -6,4 +6,7 @@
   <ItemGroup>
     <ClInclude Include="WinFontRender.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="D3d11Sample.rc" />
+  </ItemGroup>
 </Project>

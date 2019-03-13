@@ -36,6 +36,20 @@ public:
     ~CCoInitializeGuard() { CoUninitialize(); }
 };
 
+void GetExeBinaryResource(void*& outPtr, uint32_t& outSize, const wstr_view& name, const wstr_view& type)
+{
+    HRSRC rsrc;
+    HGLOBAL global = NULL;
+    if((rsrc = FindResource(NULL, name.c_str(), type.c_str())) == NULL ||
+        (global = LoadResource(NULL, rsrc)) == NULL)
+    {
+        assert(0 && "Failed to load EXE resource.");
+    }
+
+    outSize = SizeofResource(NULL, rsrc);
+    outPtr = LockResource(global);
+}
+
 class CApp
 {
 public:
@@ -54,6 +68,13 @@ private:
     CComPtr<IDXGISwapChain> m_SwapChain;
     CComPtr<ID3D11Texture2D> m_SwapChainTexture;
     CComPtr<ID3D11RenderTargetView> m_SwapChainRTV;
+    CComPtr<ID3D11RasterizerState> m_RasterizerState;
+    CComPtr<ID3D11DepthStencilState> m_DepthStencilState;
+    CComPtr<ID3D11SamplerState> m_SamplerState;
+    CComPtr<ID3D11BlendState> m_BlendState;
+    CComPtr<ID3D11InputLayout> m_InputLayout;
+    CComPtr<ID3D11VertexShader> m_MainVs;
+    CComPtr<ID3D11PixelShader> m_MainPs;
 };
 
 static std::unique_ptr<CApp> g_App;
@@ -109,6 +130,66 @@ void CApp::Init(HWND wnd)
     assert(SUCCEEDED(hr));
     hr = m_Dev->CreateRenderTargetView(m_SwapChainTexture, NULL, &m_SwapChainRTV);
     assert(SUCCEEDED(hr));
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    hr = m_Dev->CreateRasterizerState(&rasterizerDesc, &m_RasterizerState);
+    assert(SUCCEEDED(hr));
+
+    D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
+    hr = m_Dev->CreateDepthStencilState(&depthStencilDesc, &m_DepthStencilState);
+    assert(SUCCEEDED(hr));
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MinLOD = -FLT_MAX;
+    samplerDesc.MaxLOD =  FLT_MAX;
+    samplerDesc.MaxAnisotropy = 1;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    hr = m_Dev->CreateSamplerState(&samplerDesc, &m_SamplerState);
+    assert(SUCCEEDED(hr));
+
+    D3D11_BLEND_DESC blendDesc = {};
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    hr = m_Dev->CreateBlendState(&blendDesc, &m_BlendState);
+    assert(SUCCEEDED(hr));
+
+    void* shaderCode;
+    uint32_t shaderCodeSize;
+    GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_VS", L"Binary");
+    hr = m_Dev->CreateVertexShader(shaderCode, shaderCodeSize, nullptr, &m_MainVs);
+    assert(SUCCEEDED(hr));
+
+    D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
+        { "Pos",      0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "Color",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+    hr = m_Dev->CreateInputLayout(inputElementDesc, _countof(inputElementDesc), shaderCode, shaderCodeSize, &m_InputLayout);
+    assert(SUCCEEDED(hr));
+
+    GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_PS", L"Binary");
+    hr = m_Dev->CreatePixelShader(shaderCode, shaderCodeSize, nullptr, &m_MainPs);
+    assert(SUCCEEDED(hr));
+
+    m_Ctx->IASetInputLayout(m_InputLayout);
+    m_Ctx->RSSetState(m_RasterizerState);
+    m_Ctx->OMSetDepthStencilState(m_DepthStencilState, 0);
+    m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
+    m_Ctx->PSSetSamplers(0, 1, &m_SamplerState.p);
+    m_Ctx->OMSetBlendState(m_BlendState.p, nullptr, 0xffffffff);
 }
 
 LRESULT CApp::WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
