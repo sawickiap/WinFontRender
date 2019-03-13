@@ -50,6 +50,13 @@ void GetExeBinaryResource(void*& outPtr, uint32_t& outSize, const wstr_view& nam
     outPtr = LockResource(global);
 }
 
+struct SVertex
+{
+    vec2 Pos;
+    vec2 TexCoord;
+    uint32_t Color;
+};
+
 class CApp
 {
 public:
@@ -75,6 +82,13 @@ private:
     CComPtr<ID3D11InputLayout> m_InputLayout;
     CComPtr<ID3D11VertexShader> m_MainVs;
     CComPtr<ID3D11PixelShader> m_MainPs;
+    CComPtr<ID3D11Texture2D> m_Texture;
+    CComPtr<ID3D11ShaderResourceView> m_TextureSRV;
+    CComPtr<ID3D11Buffer> m_VertexBuffer;
+    CComPtr<ID3D11Buffer> m_IndexBuffer;
+
+    void InitTexture();
+    void InitVertexBuffer();
 };
 
 static std::unique_ptr<CApp> g_App;
@@ -171,6 +185,7 @@ void CApp::Init(HWND wnd)
     GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_VS", L"Binary");
     hr = m_Dev->CreateVertexShader(shaderCode, shaderCodeSize, nullptr, &m_MainVs);
     assert(SUCCEEDED(hr));
+    m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
 
     D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
         { "Pos",      0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -183,13 +198,24 @@ void CApp::Init(HWND wnd)
     GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_PS", L"Binary");
     hr = m_Dev->CreatePixelShader(shaderCode, shaderCodeSize, nullptr, &m_MainPs);
     assert(SUCCEEDED(hr));
+    m_Ctx->PSSetShader(m_MainPs, nullptr, 0);
 
+    D3D11_VIEWPORT viewport = {};
+    viewport.Width  = (float)DISPLAY_SIZE.x;
+    viewport.Height = (float)DISPLAY_SIZE.y;
+    viewport.MaxDepth = 1.f;
+    m_Ctx->RSSetViewports(1, &viewport);
+
+    m_Ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_Ctx->IASetInputLayout(m_InputLayout);
-    m_Ctx->RSSetState(m_RasterizerState);
-    m_Ctx->OMSetDepthStencilState(m_DepthStencilState, 0);
     m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
+    m_Ctx->RSSetState(m_RasterizerState);
     m_Ctx->PSSetSamplers(0, 1, &m_SamplerState.p);
+    m_Ctx->OMSetDepthStencilState(m_DepthStencilState, 0);
     m_Ctx->OMSetBlendState(m_BlendState.p, nullptr, 0xffffffff);
+
+    InitTexture();
+    InitVertexBuffer();
 }
 
 LRESULT CApp::WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -215,7 +241,61 @@ void CApp::Frame()
     vec4 clearColor = vec4(0.f, 0.f, 0.4f, 1.f);
     m_Ctx->ClearRenderTargetView(m_SwapChainRTV, clearColor);
 
+    ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
+    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
+    
+    m_Ctx->Draw(3, 0);
+    
+    rtv = nullptr;
+    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
+
     m_SwapChain->Present(1, 0);
+}
+
+void CApp::InitTexture()
+{
+    uvec2 textureSize = uvec2(4, 4);
+    uint8_t textureData[32*32] = {
+        255, 0, 255, 0,
+        0, 255, 0, 255,
+        255, 0, 255, 0,
+        0, 255, 0, 255,
+    };
+    uint32_t textureRowPitch = 4;
+
+    CD3D11_TEXTURE2D_DESC textureDesc = CD3D11_TEXTURE2D_DESC(
+        DXGI_FORMAT_A8_UNORM, textureSize.x, textureSize.y, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA initialData = {textureData, textureRowPitch, 0};
+    HRESULT hr = m_Dev->CreateTexture2D(&textureDesc, &initialData, &m_Texture);
+    assert(SUCCEEDED(hr));
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = { textureDesc.Format, D3D_SRV_DIMENSION_TEXTURE2D };
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = 1;
+    hr = m_Dev->CreateShaderResourceView(m_Texture, &srvDesc, &m_TextureSRV);
+    assert(SUCCEEDED(hr));
+
+    m_Ctx->PSSetShaderResources(0, 1, &m_TextureSRV.p);
+}
+
+void CApp::InitVertexBuffer()
+{
+    const uint32_t vertexCount = 3;
+    const SVertex vertices[] = {
+        { vec2(0.f, 0.f), vec2(0.f, 0.f), 0xFF0000FF },
+        { vec2(1.f, 0.f), vec2(1.f, 0.f), 0xFFFFFFFF },
+        { vec2(0.f, 1.f), vec2(0.f, 1.f), 0xFFFFFFFF },
+    };
+
+    CD3D11_BUFFER_DESC bufDesc = CD3D11_BUFFER_DESC(
+        vertexCount * sizeof(SVertex), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA initialData = {vertices};
+    HRESULT hr = m_Dev->CreateBuffer(&bufDesc, &initialData, &m_VertexBuffer);
+    assert(SUCCEEDED(hr));
+
+    const UINT vertexStride = sizeof(SVertex);
+    const UINT offset = 0;
+    m_Ctx->IASetVertexBuffers(0, 1, &m_VertexBuffer.p, &vertexStride, &offset);
 }
 
 LRESULT WINAPI WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
