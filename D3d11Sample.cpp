@@ -75,7 +75,7 @@ const uint32_t FONT_DISPLAY_FLAGS =
 const float FONT_DISPLAY_SIZE = 30.f;
 
 const vec4 BACKGROUND_COLOR = vec4(0.f, 0.f, 0.333f, 1.f); // (r, g, b, a)
-const uint32_t TEXT_COLOR = 0xFFC0FFFF; // 0xAABBGGRR
+const uint32_t TEXT_COLOR = 0xFFE0E0E0; // 0xAABBGGRR
 
 class CCoInitializeGuard
 {
