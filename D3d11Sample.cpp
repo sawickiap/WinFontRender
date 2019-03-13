@@ -1,3 +1,4 @@
+// Defines for <Windows.h>
 #define STRICT
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -27,12 +28,16 @@
 
 const wchar_t* const WINDOW_CLASS_NAME = L"WIN_FONT_RENDER_SAMPLE_D3D11";
 const wchar_t* const WINDOW_TITLE = L"WinFontRender Direct3D 11 Sample";
+
 const uvec2 DISPLAY_SIZE = uvec2(1280, 720);
 const float MARGIN = 32.f;
-const float TEXT_WIDTH = DISPLAY_SIZE.x - MARGIN *2.f;
-typedef uint16_t INDEX_TYPE;
-const DXGI_FORMAT INDEX_BUFFER_FORMAT = DXGI_FORMAT_R16_UINT;
+const float TEXT_WIDTH = DISPLAY_SIZE.x - MARGIN * 2.f;
 
+typedef uint16_t INDEX_TYPE;
+constexpr DXGI_FORMAT INDEX_BUFFER_FORMAT = DXGI_FORMAT_R16_UINT;
+constexpr uint32_t VB_FLAGS = VERTEX_BUFFER_FLAG_USE_INDEX_BUFFER_16BIT | VERTEX_BUFFER_FLAG_TRIANGLE_STRIP_WITH_RESTART_INDEX;
+
+// Text generated using: https://pl.lipsum.com/
 const wchar_t* const TEXT_TO_DISPLAY =
     L"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin purus ipsum, "
     L"ultricies sed ipsum sit amet, dignissim consequat risus. Pellentesque habitant "
@@ -43,17 +48,23 @@ const wchar_t* const TEXT_TO_DISPLAY =
     L"Donec eu nibh ac massa ultrices imperdiet. Donec metus mauris, varius sed commodo "
     L"nec, cursus quis nibh. Sed bibendum vestibulum nulla eget tempor. Morbi vel ipsum "
     L"in ex scelerisque scelerisque. Curabitur varius tortor in magna sagittis, id "
-    L"eleifend orci cursus. Vivamus accumsan euismod dolor, in aliquam lorem sollicitudin nec. ";
+    L"eleifend orci cursus. Vivamus accumsan euismod dolor, in aliquam lorem sollicitudin nec.\n"
+    L"\n"
+    L"Sed scelerisque urna eros, at varius sem luctus at. Suspendisse nec commodo est, "
+    L"et tincidunt lectus. Nullam aliquam nunc vel dolor scelerisque, sed dignissim ipsum "
+    L"rhoncus. Nunc gravida, tortor eu auctor fermentum, mauris massa porttitor quam, in "
+    L"finibus mi metus vitae purus. Donec non dictum est. Quisque in ligula nec felis "
+    L"suscipit efficitur. Cras eros mauris, varius semper tempus non, vestibulum sit amet "
+    L"ante. Cras eget dolor dolor. Etiam vel urna bibendum, placerat lorem quis, efficitur "
+    L"ante. Donec sed nibh a tortor porta sollicitudin volutpat ut metus. Orci varius "
+    L"natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.";
 
-const wchar_t* const ORIGINAL_FONT_FACE_NAME = L"Arial";
-const int ORIGINAL_FONT_SIZE = 32;
-const uint32_t ORIGINAL_FONT_FLAGS = SFontDesc::FLAG_BOLD;
+const wchar_t* const FONT_CREATE_FACE_NAME = L"Arial";
+const int FONT_CREATE_SIZE = 30;
+const uint32_t FONT_CREATE_FLAGS = SFontDesc::FLAG_BOLD;
 
-constexpr uint32_t VB_FLAGS = VERTEX_BUFFER_FLAG_USE_INDEX_BUFFER_16BIT | VERTEX_BUFFER_FLAG_TRIANGLE_STRIP_WITH_RESTART_INDEX;
-const uint32_t DISPLAY_FONT_FLAGS = CFont::FLAG_WRAP_WORD | CFont::FLAG_HLEFT | CFont::FLAG_VTOP;
-const float DISPLAY_FONT_SIZE = 32.f;
-
-HINSTANCE g_Instance;
+const uint32_t FONT_DISPLAY_FLAGS = CFont::FLAG_WRAP_WORD | CFont::FLAG_HLEFT | CFont::FLAG_VTOP;
+const float FONT_DISPLAY_SIZE = 30.f;
 
 class CCoInitializeGuard
 {
@@ -86,8 +97,6 @@ struct SVertex
 class CApp
 {
 public:
-    CApp();
-    ~CApp();
     void Init(HWND wnd);
     LRESULT WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
     void Exit();
@@ -113,44 +122,96 @@ private:
     CComPtr<ID3D11ShaderResourceView> m_TextureSRV;
     CComPtr<ID3D11Buffer> m_VertexBuffer;
     CComPtr<ID3D11Buffer> m_IndexBuffer;
+    size_t m_VertexCount = 0;
     size_t m_IndexCount = 0;
 
+    void InitDxgiFactory();
+    void InitDevice();
+    void InitSwapChain();
+    void InitStates();
+    void InitShaders();
     void InitFont();
     void InitTexture();
-    void InitVertexBuffer();
+    void InitVertexAndIndexBuffer();
+    void SetOneTimeStates();
     static void PostprocessVertices(SVertex* vertices, size_t count);
 };
 
 static std::unique_ptr<CApp> g_App;
 
-CApp::CApp()
-{
-}
-
-CApp::~CApp()
-{
-}
-
 void CApp::Init(HWND wnd)
 {
     m_Wnd = wnd;
+    InitDxgiFactory();
+    InitDevice();
+    InitSwapChain();
+    InitStates();
+    InitShaders();
+    InitFont();
+    InitTexture();
+    InitVertexAndIndexBuffer();
+    SetOneTimeStates();
+}
 
+LRESULT CApp::WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch(msg)
+    {
+    case WM_KEYDOWN:
+        if(wParam == VK_ESCAPE)
+            Exit();
+        return 0;
+    }
+
+    return DefWindowProc(wnd, msg, wParam, lParam);
+}
+
+void CApp::Exit()
+{
+    assert(m_Wnd);
+    DestroyWindow(m_Wnd);
+}
+
+void CApp::Frame()
+{
+    vec4 clearColor = vec4(0.f, 0.f, 0.333f, 1.f);
+    m_Ctx->ClearRenderTargetView(m_SwapChainRTV, clearColor);
+
+    ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
+    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
+    
+    m_Ctx->DrawIndexed((UINT)m_IndexCount, 0, 0);
+    
+    rtv = nullptr;
+    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
+
+    m_SwapChain->Present(1, 0);
+}
+
+void CApp::InitDxgiFactory()
+{
     HRESULT hr = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&m_DxgiFactory);
     assert(SUCCEEDED(hr));
+}
 
-    hr = D3D11CreateDevice(
-        NULL,
-        D3D_DRIVER_TYPE_HARDWARE,
+void CApp::InitDevice()
+{
+    HRESULT hr = D3D11CreateDevice(
+        NULL, // pAdapter
+        D3D_DRIVER_TYPE_HARDWARE, // DriverType
         nullptr, // Software
-        D3D11_CREATE_DEVICE_SINGLETHREADED,
-        NULL,
+        D3D11_CREATE_DEVICE_SINGLETHREADED, // Flags
+        NULL, // pFeatureLevels
         0, // FeatureLevels
-        D3D11_SDK_VERSION,
-        &m_Dev,
+        D3D11_SDK_VERSION, // SDKVersion
+        &m_Dev, // ppDevice
         nullptr, // pFeatureLevel
-        &m_Ctx);
+        &m_Ctx); // ppImmediateContext
     assert(SUCCEEDED(hr));
+}
 
+void CApp::InitSwapChain()
+{
     DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
     swapChainDesc.BufferDesc.Width  = DISPLAY_SIZE.x;
     swapChainDesc.BufferDesc.Height = DISPLAY_SIZE.y;
@@ -161,25 +222,28 @@ void CApp::Init(HWND wnd)
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.BufferCount = 3;
-    swapChainDesc.OutputWindow = wnd;
+    swapChainDesc.OutputWindow = m_Wnd;
     swapChainDesc.Windowed = TRUE;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
     swapChainDesc.Flags = 0;
     swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-    hr = m_DxgiFactory->CreateSwapChain(m_Dev.p, &swapChainDesc, &m_SwapChain);
+    HRESULT hr = m_DxgiFactory->CreateSwapChain(m_Dev.p, &swapChainDesc, &m_SwapChain);
     assert(SUCCEEDED(hr));
 
     hr = m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&m_SwapChainTexture);
     assert(SUCCEEDED(hr));
     hr = m_Dev->CreateRenderTargetView(m_SwapChainTexture, NULL, &m_SwapChainRTV);
     assert(SUCCEEDED(hr));
+}
 
+void CApp::InitStates()
+{
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    hr = m_Dev->CreateRasterizerState(&rasterizerDesc, &m_RasterizerState);
+    HRESULT hr = m_Dev->CreateRasterizerState(&rasterizerDesc, &m_RasterizerState);
     assert(SUCCEEDED(hr));
 
     D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
@@ -209,13 +273,15 @@ void CApp::Init(HWND wnd)
     blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     hr = m_Dev->CreateBlendState(&blendDesc, &m_BlendState);
     assert(SUCCEEDED(hr));
+}
 
+void CApp::InitShaders()
+{
     void* shaderCode;
     uint32_t shaderCodeSize;
     GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_VS", L"Binary");
-    hr = m_Dev->CreateVertexShader(shaderCode, shaderCodeSize, nullptr, &m_MainVs);
+    HRESULT hr = m_Dev->CreateVertexShader(shaderCode, shaderCodeSize, nullptr, &m_MainVs);
     assert(SUCCEEDED(hr));
-    m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
 
     D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
         { "Pos",      0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -228,59 +294,6 @@ void CApp::Init(HWND wnd)
     GetExeBinaryResource(shaderCode, shaderCodeSize, L"IDR_SHADER_MAIN_PS", L"Binary");
     hr = m_Dev->CreatePixelShader(shaderCode, shaderCodeSize, nullptr, &m_MainPs);
     assert(SUCCEEDED(hr));
-    m_Ctx->PSSetShader(m_MainPs, nullptr, 0);
-
-    D3D11_VIEWPORT viewport = {};
-    viewport.Width  = (float)DISPLAY_SIZE.x;
-    viewport.Height = (float)DISPLAY_SIZE.y;
-    viewport.MaxDepth = 1.f;
-    m_Ctx->RSSetViewports(1, &viewport);
-
-    m_Ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    m_Ctx->IASetInputLayout(m_InputLayout);
-    m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
-    m_Ctx->RSSetState(m_RasterizerState);
-    m_Ctx->PSSetSamplers(0, 1, &m_SamplerState.p);
-    m_Ctx->OMSetDepthStencilState(m_DepthStencilState, 0);
-    m_Ctx->OMSetBlendState(m_BlendState.p, nullptr, 0xffffffff);
-
-    InitFont();
-    InitTexture();
-    InitVertexBuffer();
-}
-
-LRESULT CApp::WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch(msg)
-    {
-    case WM_KEYDOWN:
-        if(wParam == VK_ESCAPE)
-            Exit();
-        return 0;
-    }
-
-    return DefWindowProc(wnd, msg, wParam, lParam);
-}
-
-void CApp::Exit()
-{
-    DestroyWindow(m_Wnd);
-}
-
-void CApp::Frame()
-{
-    vec4 clearColor = vec4(0.f, 0.f, 0.4f, 1.f);
-    m_Ctx->ClearRenderTargetView(m_SwapChainRTV, clearColor);
-
-    ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
-    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
-    
-    m_Ctx->DrawIndexed((UINT)m_IndexCount, 0, 0);
-    
-    rtv = nullptr;
-    m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
-
-    m_SwapChain->Present(1, 0);
 }
 
 void CApp::InitFont()
@@ -288,9 +301,9 @@ void CApp::InitFont()
     m_Font = std::make_unique<CFont>();
 
     SFontDesc fontDesc;
-    fontDesc.FaceName = ORIGINAL_FONT_FACE_NAME;
-    fontDesc.Height = ORIGINAL_FONT_SIZE;
-    fontDesc.Flags = ORIGINAL_FONT_FLAGS;
+    fontDesc.FaceName = FONT_CREATE_FACE_NAME;
+    fontDesc.Height = FONT_CREATE_SIZE;
+    fontDesc.Flags = FONT_CREATE_FLAGS;
 
     bool ok = m_Font->Init(fontDesc);
     assert(ok);
@@ -317,21 +330,18 @@ void CApp::InitTexture()
     hr = m_Dev->CreateShaderResourceView(m_Texture, &srvDesc, &m_TextureSRV);
     assert(SUCCEEDED(hr));
 
-    m_Ctx->PSSetShaderResources(0, 1, &m_TextureSRV.p);
-
     m_Font->FreeTextureData();
 }
 
-void CApp::InitVertexBuffer()
+void CApp::InitVertexAndIndexBuffer()
 {
     assert(m_Font);
 
-    size_t quadCount = m_Font->CalcQuadCount(TEXT_TO_DISPLAY, DISPLAY_FONT_SIZE, DISPLAY_FONT_FLAGS, TEXT_WIDTH);
+    const size_t quadCount = m_Font->CalcQuadCount(TEXT_TO_DISPLAY, FONT_DISPLAY_SIZE, FONT_DISPLAY_FLAGS, TEXT_WIDTH);
 
-    size_t vertexCount = 0;
-    QuadCountToVertexCount<VB_FLAGS>(vertexCount, m_IndexCount, quadCount);
+    QuadCountToVertexCount<VB_FLAGS>(m_VertexCount, m_IndexCount, quadCount);
 
-    std::vector<SVertex> vertices(vertexCount);
+    std::vector<SVertex> vertices(m_VertexCount);
     std::vector<uint16_t> indices(m_IndexCount);
 
     const vec2 pos = vec2(MARGIN, MARGIN);
@@ -342,41 +352,81 @@ void CApp::InitVertexBuffer()
     fontVbDesc.PositionStrideBytes = sizeof(SVertex);
     fontVbDesc.TexCoordStrideBytes = sizeof(SVertex);
     fontVbDesc.FirstIndex = indices.data();
-    m_Font->GetTextVertices<VB_FLAGS>(fontVbDesc, pos, TEXT_TO_DISPLAY, DISPLAY_FONT_SIZE, DISPLAY_FONT_FLAGS, TEXT_WIDTH);
+    m_Font->GetTextVertices<VB_FLAGS>(fontVbDesc, pos, TEXT_TO_DISPLAY, FONT_DISPLAY_SIZE, FONT_DISPLAY_FLAGS, TEXT_WIDTH);
 
     PostprocessVertices(vertices.data(), vertices.size());
     
     CD3D11_BUFFER_DESC vbDesc = CD3D11_BUFFER_DESC(
-        (UINT)(vertexCount * sizeof(SVertex)), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+        (UINT)(m_VertexCount * sizeof(SVertex)), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
     D3D11_SUBRESOURCE_DATA vbInitialData = {vertices.data()};
     HRESULT hr = m_Dev->CreateBuffer(&vbDesc, &vbInitialData, &m_VertexBuffer);
     assert(SUCCEEDED(hr));
-
-    const UINT vertexStride = sizeof(SVertex);
-    const UINT offset = 0;
-    m_Ctx->IASetVertexBuffers(0, 1, &m_VertexBuffer.p, &vertexStride, &offset);
 
     CD3D11_BUFFER_DESC ibDesc = CD3D11_BUFFER_DESC(
         (UINT)(m_IndexCount * sizeof(INDEX_TYPE)), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_IMMUTABLE);
     D3D11_SUBRESOURCE_DATA ibInitialData = {indices.data()};
     hr = m_Dev->CreateBuffer(&ibDesc, &ibInitialData, &m_IndexBuffer);
     assert(SUCCEEDED(hr));
+}
 
+void CApp::SetOneTimeStates()
+{
+    m_Ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+    assert(m_InputLayout);
+    m_Ctx->IASetInputLayout(m_InputLayout);
+
+    assert(m_VertexBuffer);
+    const UINT vertexStride = sizeof(SVertex);
+    const UINT offset = 0;
+    m_Ctx->IASetVertexBuffers(0, 1, &m_VertexBuffer.p, &vertexStride, &offset);
+
+    assert(m_IndexBuffer);
     m_Ctx->IASetIndexBuffer(m_IndexBuffer.p, INDEX_BUFFER_FORMAT, 0);
+
+    assert(m_MainVs);
+    m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
+
+    D3D11_VIEWPORT viewport = {};
+    viewport.Width  = (float)DISPLAY_SIZE.x;
+    viewport.Height = (float)DISPLAY_SIZE.y;
+    viewport.MaxDepth = 1.f;
+    m_Ctx->RSSetViewports(1, &viewport);
+
+    assert(m_RasterizerState);
+    m_Ctx->RSSetState(m_RasterizerState);
+
+    assert(m_MainPs);
+    m_Ctx->PSSetShader(m_MainPs, nullptr, 0);
+
+    assert(m_TextureSRV);
+    m_Ctx->PSSetShaderResources(0, 1, &m_TextureSRV.p);
+
+    assert(m_SamplerState);
+    m_Ctx->PSSetSamplers(0, 1, &m_SamplerState.p);
+
+    assert(m_DepthStencilState);
+    m_Ctx->OMSetDepthStencilState(m_DepthStencilState.p, 0);
+
+    assert(m_BlendState);
+    m_Ctx->OMSetBlendState(m_BlendState.p, nullptr, 0xffffffff);
 }
 
 void CApp::PostprocessVertices(SVertex* vertices, size_t count)
 {
-    vec2 displaySizeInv = vec2(1.f / (float)DISPLAY_SIZE.x, 1.f / (float)DISPLAY_SIZE.y);
+    const vec2 displaySizeInv = vec2(
+        1.f / (float)DISPLAY_SIZE.x,
+        1.f / (float)DISPLAY_SIZE.y);
 
     for(size_t i = 0; i < count; ++i)
     {
         // Transform Pos from source coordinate system, which is from left-top (0, 0) in pixels,
-        // to destination coordinate system, which is from left-bottom (-1, -1) to (1, 1).
+        // to destination coordinate system, which is from left-bottom (-1, -1) to right-top (1, 1).
         vertices[i].Pos.x = vertices[i].Pos.x * (displaySizeInv.x * 2.f) - 1.f;
         vertices[i].Pos.y = 1.f - vertices[i].Pos.y * (displaySizeInv.y * 2.f);
+
         // Fill Color, as it was uninitialized before.
-        vertices[i].Color = 0xFFFFFFFF;
+        vertices[i].Color = 0xFFE0E0E0;
     }
 }
 
@@ -405,26 +455,24 @@ LRESULT WINAPI WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     default:
         if(g_App)
-        {
             return g_App->WndProc(wnd, msg, wParam, lParam);
-        }
     }
 
     return DefWindowProc(wnd, msg, wParam, lParam);
 }
 
-static void Main2()
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
-    g_Instance = (HINSTANCE)GetModuleHandle(NULL);
+    HINSTANCE instance = (HINSTANCE)GetModuleHandle(NULL);
 
     CCoInitializeGuard coInitializeObj;
 
     WNDCLASSEX wndClassDesc = { sizeof(WNDCLASSEX) };
     wndClassDesc.style = CS_VREDRAW | CS_HREDRAW | CS_DBLCLKS;
     wndClassDesc.hbrBackground = NULL;
-    wndClassDesc.hCursor = LoadCursor(NULL, IDC_CROSS);
+    wndClassDesc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wndClassDesc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wndClassDesc.hInstance = g_Instance;
+    wndClassDesc.hInstance = instance;
     wndClassDesc.lpfnWndProc = &WndProc;
     wndClassDesc.lpszClassName = WINDOW_CLASS_NAME;
 
@@ -448,16 +496,14 @@ static void Main2()
         size.x, size.y,
         NULL,
         NULL,
-        g_Instance,
+        instance,
         0);
-    assert(wnd);
-    assert(g_App);
+    assert(wnd && g_App);
 
     MSG msg;
     bool quit = false;
     while(!quit)
     {
-        uint32_t messageIndex = 0;
         while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT)
@@ -465,35 +511,12 @@ static void Main2()
                 quit = true;
                 break;
             }
-
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-
-            ++messageIndex;
         }
 
         if(g_App)
-        {
             g_App->Frame();
-        }
-    }
-}
-
-int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
-{
-    try
-    {
-        Main2();
-    }
-    catch(const std::exception& err)
-    {
-        fprintf(stderr, "ERROR: %s\n", err.what());
-        return -1;
-    }
-    catch(...)
-    {
-        fprintf(stderr, "UNKNOWN ERROR\n");
-        return -1;
     }
 
     return 0;

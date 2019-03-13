@@ -792,17 +792,10 @@ inline void swap(str_view_template<CharT>& lhs, str_view_template<CharT>& rhs)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Very basic vector classes.
+// Very basic vector types.
 //
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
-inline float clamp(float v, float minVal, float maxVal) { return std::max(minVal, std::min(v, maxVal)); }
-inline float saturate(float v) { return std::max(0.f, std::min(v, 1.f)); }
-inline float lerp(float a, float b, float t) { return a + t * (b - a); }
-
-inline float radians(float degrees) { return degrees * 0.017453292519943295769222222222222f; }
-inline float degrees(float radians) { return radians * 57.295779513082320876846364344191f; }
 
 ////////////////////////////////////////////////////////////////////////////////
 // bvec2
@@ -932,15 +925,6 @@ typedef base_vec2<uint32_t> uvec2;
 #define IVEC2_ZERO   ivec2(0, 0)
 #define UVEC2_ZERO   uvec2(0u, 0u)
 
-inline float length2(const vec2& v) { return v.x * v.x + v.y * v.y; }
-inline float length(const vec2& v) { return sqrt(v.x * v.x + v.y * v.y); }
-inline float dot(const vec2& lhs, const vec2& rhs) { return lhs.x * rhs.x + lhs.y * rhs.y; }
-inline float distance2(const vec2& lhs, const vec2& rhs) { return length2(rhs - lhs); }
-inline float distance(const vec2& lhs, const vec2& rhs) { return length(rhs - lhs); }
-inline ivec2 abs(const ivec2& v) { return ivec2(abs(v.x), abs(v.y)); }
-inline vec2 abs(const vec2& v) { return vec2(abs(v.x), abs(v.y)); }
-inline vec2 normalize(const vec2& v) { float invLen = 1.f / length(v); return v * invLen; }
-
 ////////////////////////////////////////////////////////////////////////////////
 // vec4
 
@@ -1017,15 +1001,6 @@ typedef base_vec4<uint32_t> uvec4;
 #define IVEC4_ZERO   ivec4(0, 0, 0, 0)
 #define UVEC4_ZERO   uvec4(0u, 0u, 0u, 0u)
 
-inline float length2(const vec4& v) { return v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w; }
-inline float length(const vec4& v) { return sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w); }
-inline float dot(const vec4& lhs, const vec4& rhs) { return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w; }
-inline float distance2(const vec4& lhs, const vec4& rhs) { return length2(rhs - lhs); }
-inline float distance(const vec4& lhs, const vec4& rhs) { return length(rhs - lhs); }
-inline ivec4 abs(const ivec4& v) { return ivec4(abs(v.x), abs(v.y), abs(v.z), abs(v.w)); }
-inline vec4 abs(const vec4& v) { return vec4(abs(v.x), abs(v.y), abs(v.z), abs(v.w)); }
-inline vec4 normalize(const vec4& v) { float invLen = 1.f / length(v); return v * invLen; }
-
 #pragma endregion
 
 #pragma region WinFontRender Header
@@ -1037,7 +1012,7 @@ inline vec4 normalize(const vec4& v) { float invLen = 1.f / length(v); return v 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// Bit flags to be used as "vbFlags". Describe format of vertex + index buffer.
+// Bit flags to be used as "vbFlags". They describe format of vertex + index buffer.
 enum VERTEX_BUFFER_FLAGS
 {
     // Index buffer is in use, with indices of type uint16_t.
@@ -1079,7 +1054,7 @@ bool ValidateVertexBufferFlags(uint32_t vbFlags);
 template<uint32_t vbFlags>
 void QuadCountToVertexCount(size_t& outVertexCount, size_t& outIndexCount, size_t quadCount);
 
-// Helper class that writes sequence of quads to a vartex buffer.
+// Helper class that writes sequence of quads to a vartex buffer. Used internally.
 template<uint32_t vbFlags>
 class CQuadVertexWriter
 {
@@ -1108,9 +1083,6 @@ struct SFontDesc
     {
         FLAG_BOLD      = 0x1,
         FLAG_ITALIC    = 0x2,
-        // 1st way to add underlines - statically in the texture.
-        FLAG_UNDERLINE = 0x4,
-        FLAG_STRIKEOUT = 0x8,
 
         // Set this flag if texture coordinates start from left bottom corner as (0, 0), like in OpenGL.
         // Without this flag texture coordinates start from left top corner as (0, 0), like in DirectX and Vulkan.
@@ -1159,7 +1131,7 @@ public:
         // Also wrap lines automatically, on whole word boundaries if posible.
         FLAG_WRAP_WORD       = 0x8,
 
-        // # 2nd way to add underlines - dynamically while rendering. Use any combination.
+        // # Use any combination.
 
         FLAG_UNDERLINE = 0x10,
         FLAG_DOUBLE_UNDERLINE = 0x20,
@@ -1888,8 +1860,8 @@ bool CFont::Init(const SFontDesc& desc)
         0, // cOrientation
         (desc.Flags & SFontDesc::FLAG_BOLD     ) ? FW_BOLD : FW_NORMAL, // cWeight
         (desc.Flags & SFontDesc::FLAG_ITALIC   ) ? TRUE : FALSE, // bItalic
-        (desc.Flags & SFontDesc::FLAG_UNDERLINE) ? TRUE : FALSE, // bUnderline
-        (desc.Flags & SFontDesc::FLAG_STRIKEOUT) ? TRUE : FALSE, //bStrikeOut
+        FALSE, // bUnderline. Doesn't seem to work when I set TRUE.
+        FALSE, //bStrikeOut. Doesn't seem to work when I set TRUE.
         desc.CharSet, // iCharSet
         OUT_DEFAULT_PRECIS, // iOutPrecision
         CLIP_DEFAULT_PRECIS, // iClipPrecision
