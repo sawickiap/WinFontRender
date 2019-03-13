@@ -26,6 +26,8 @@
 const wchar_t* const WINDOW_CLASS_NAME = L"WIN_FONT_RENDER_SAMPLE_D3D11";
 const wchar_t* const WINDOW_TITLE = L"WinFontRender Direct3D 11 Sample";
 const uvec2 DISPLAY_SIZE = uvec2(1280, 720);
+typedef uint16_t INDEX_TYPE;
+const DXGI_FORMAT INDEX_BUFFER_FORMAT = DXGI_FORMAT_R16_UINT;
 
 HINSTANCE g_Instance;
 
@@ -206,7 +208,7 @@ void CApp::Init(HWND wnd)
     viewport.MaxDepth = 1.f;
     m_Ctx->RSSetViewports(1, &viewport);
 
-    m_Ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_Ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_Ctx->IASetInputLayout(m_InputLayout);
     m_Ctx->VSSetShader(m_MainVs, nullptr, 0);
     m_Ctx->RSSetState(m_RasterizerState);
@@ -244,7 +246,7 @@ void CApp::Frame()
     ID3D11RenderTargetView* rtv = m_SwapChainRTV.p;
     m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
     
-    m_Ctx->Draw(3, 0);
+    m_Ctx->DrawIndexed(5, 0, 0);
     
     rtv = nullptr;
     m_Ctx->OMSetRenderTargets(1, &rtv, nullptr);
@@ -280,22 +282,33 @@ void CApp::InitTexture()
 
 void CApp::InitVertexBuffer()
 {
-    const uint32_t vertexCount = 3;
+    const uint32_t vertexCount = 4;
     const SVertex vertices[] = {
         { vec2(0.f, 0.f), vec2(0.f, 0.f), 0xFF0000FF },
-        { vec2(1.f, 0.f), vec2(1.f, 0.f), 0xFFFFFFFF },
-        { vec2(0.f, 1.f), vec2(0.f, 1.f), 0xFFFFFFFF },
+        { vec2(1.f, 0.f), vec2(1.f, 0.f), 0xFF00FF00 },
+        { vec2(0.f, 1.f), vec2(0.f, 1.f), 0xFFFF0000 },
+        { vec2(1.f, 1.f), vec2(1.f, 1.f), 0xFFFFFFFF },
     };
+    const uint32_t indexCount = 5;
+    const INDEX_TYPE indices[] = {0, 1, 2, 3, 0xFFFF};
 
-    CD3D11_BUFFER_DESC bufDesc = CD3D11_BUFFER_DESC(
+    CD3D11_BUFFER_DESC vbDesc = CD3D11_BUFFER_DESC(
         vertexCount * sizeof(SVertex), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
-    D3D11_SUBRESOURCE_DATA initialData = {vertices};
-    HRESULT hr = m_Dev->CreateBuffer(&bufDesc, &initialData, &m_VertexBuffer);
+    D3D11_SUBRESOURCE_DATA vbInitialData = {vertices};
+    HRESULT hr = m_Dev->CreateBuffer(&vbDesc, &vbInitialData, &m_VertexBuffer);
     assert(SUCCEEDED(hr));
 
     const UINT vertexStride = sizeof(SVertex);
     const UINT offset = 0;
     m_Ctx->IASetVertexBuffers(0, 1, &m_VertexBuffer.p, &vertexStride, &offset);
+
+    CD3D11_BUFFER_DESC ibDesc = CD3D11_BUFFER_DESC(
+        indexCount * sizeof(INDEX_TYPE), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+    D3D11_SUBRESOURCE_DATA ibInitialData = {indices};
+    hr = m_Dev->CreateBuffer(&ibDesc, &ibInitialData, &m_IndexBuffer);
+    assert(SUCCEEDED(hr));
+
+    m_Ctx->IASetIndexBuffer(m_IndexBuffer.p, INDEX_BUFFER_FORMAT, 0);
 }
 
 LRESULT WINAPI WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
