@@ -24,6 +24,11 @@
 #include <dxgi1_6.h>
 #include <d3d11.h>
 
+using WinFontRender::uvec2;
+using WinFontRender::ivec2;
+using WinFontRender::vec2;
+using WinFontRender::vec4;
+
 const wchar_t* const WINDOW_CLASS_NAME = L"WIN_FONT_RENDER_SAMPLE_D3D11";
 const wchar_t* const WINDOW_TITLE = L"WinFontRender Direct3D 11 Sample";
 
@@ -33,7 +38,9 @@ const float TEXT_WIDTH = DISPLAY_SIZE.x - MARGIN * 2.f;
 
 typedef uint16_t INDEX_TYPE;
 constexpr DXGI_FORMAT INDEX_BUFFER_FORMAT = DXGI_FORMAT_R16_UINT;
-constexpr uint32_t VB_FLAGS = VERTEX_BUFFER_FLAG_USE_INDEX_BUFFER_16BIT | VERTEX_BUFFER_FLAG_TRIANGLE_STRIP_WITH_RESTART_INDEX;
+constexpr uint32_t VB_FLAGS =
+    WinFontRender::VERTEX_BUFFER_FLAG_USE_INDEX_BUFFER_16BIT |
+    WinFontRender::VERTEX_BUFFER_FLAG_TRIANGLE_STRIP_WITH_RESTART_INDEX;
 
 // Text generated using: https://pl.lipsum.com/
 const wchar_t* const TEXT_TO_DISPLAY =
@@ -59,9 +66,12 @@ const wchar_t* const TEXT_TO_DISPLAY =
 
 const wchar_t* const FONT_CREATE_FACE_NAME = L"Arial";
 const int FONT_CREATE_SIZE = 30;
-const uint32_t FONT_CREATE_FLAGS = SFontDesc::FLAG_BOLD;
+const uint32_t FONT_CREATE_FLAGS = WinFontRender::SFontDesc::FLAG_BOLD;
 
-const uint32_t FONT_DISPLAY_FLAGS = CFont::FLAG_WRAP_WORD | CFont::FLAG_HLEFT | CFont::FLAG_VTOP;
+const uint32_t FONT_DISPLAY_FLAGS =
+    WinFontRender::CFont::FLAG_WRAP_WORD |
+    WinFontRender::CFont::FLAG_HLEFT |
+    WinFontRender::CFont::FLAG_VTOP;
 const float FONT_DISPLAY_SIZE = 30.f;
 
 const vec4 BACKGROUND_COLOR = vec4(0.f, 0.f, 0.333f, 1.f); // (r, g, b, a)
@@ -118,7 +128,7 @@ private:
     CComPtr<ID3D11InputLayout> m_InputLayout;
     CComPtr<ID3D11VertexShader> m_MainVs;
     CComPtr<ID3D11PixelShader> m_MainPs;
-    std::unique_ptr<CFont> m_Font;
+    std::unique_ptr<WinFontRender::CFont> m_Font;
     CComPtr<ID3D11Texture2D> m_Texture;
     CComPtr<ID3D11ShaderResourceView> m_TextureSRV;
     CComPtr<ID3D11Buffer> m_VertexBuffer;
@@ -298,9 +308,9 @@ void CApp::InitShaders()
 
 void CApp::InitFont()
 {
-    m_Font = std::make_unique<CFont>();
+    m_Font = std::make_unique<WinFontRender::CFont>();
 
-    SFontDesc fontDesc;
+    WinFontRender::SFontDesc fontDesc;
     fontDesc.FaceName = FONT_CREATE_FACE_NAME;
     fontDesc.Height = FONT_CREATE_SIZE;
     fontDesc.Flags = FONT_CREATE_FLAGS;
@@ -339,14 +349,14 @@ void CApp::InitVertexAndIndexBuffer()
 
     const size_t quadCount = m_Font->CalcQuadCount(TEXT_TO_DISPLAY, FONT_DISPLAY_SIZE, FONT_DISPLAY_FLAGS, TEXT_WIDTH);
 
-    QuadCountToVertexCount<VB_FLAGS>(m_VertexCount, m_IndexCount, quadCount);
+    WinFontRender::QuadCountToVertexCount<VB_FLAGS>(m_VertexCount, m_IndexCount, quadCount);
 
     std::vector<SVertex> vertices(m_VertexCount);
     std::vector<uint16_t> indices(m_IndexCount);
 
     const vec2 pos = vec2(MARGIN, MARGIN);
 
-    SVertexBufferDesc fontVbDesc;
+    WinFontRender::SVertexBufferDesc fontVbDesc;
     fontVbDesc.FirstPosition = &vertices[0].Pos;
     fontVbDesc.FirstTexCoord = &vertices[0].TexCoord;
     fontVbDesc.PositionStrideBytes = sizeof(SVertex);

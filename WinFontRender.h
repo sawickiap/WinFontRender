@@ -63,7 +63,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-#pragma once
+//#pragma once
 
 #include <string>
 #include <atomic>
@@ -799,6 +799,9 @@ inline void swap(str_view_template<CharT>& lhs, str_view_template<CharT>& rhs)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace WinFontRender
+{
+
 ////////////////////////////////////////////////////////////////////////////////
 // bvec2
 
@@ -1003,6 +1006,8 @@ typedef base_vec4<uint32_t> uvec4;
 #define IVEC4_ZERO   ivec4(0, 0, 0, 0)
 #define UVEC4_ZERO   uvec4(0u, 0u, 0u, 0u)
 
+} // namespace WinFontRender
+
 #pragma endregion
 
 #pragma region WinFontRender Header
@@ -1013,6 +1018,9 @@ typedef base_vec4<uint32_t> uvec4;
 //
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+namespace WinFontRender
+{
 
 // Bit flags to be used as "vbFlags". They describe format of vertex + index buffer.
 enum VERTEX_BUFFER_FLAGS
@@ -1667,6 +1675,8 @@ void CFont::GetTextVertices(const SVertexBufferDesc& vbDesc,
     }
 }
 
+} // namespace WinFontRender
+
 #pragma endregion
 
 #endif // #ifdef WIN_FONT_RENDER_H
@@ -1689,6 +1699,9 @@ void CFont::GetTextVertices(const SVertexBufferDesc& vbDesc,
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
+
+namespace WinFontRender
+{
 
 static void BlitGray8Bitmap(
     uint8_t* dstBitmap, size_t dstRowPitch, const uvec2& dstPos,
@@ -2576,6 +2589,8 @@ void CFont::SortKerningEntries()
         return lhs.Second < rhs.Second;
     });
 }
+
+} // namespace WinFontRender
 
 #pragma endregion
 
