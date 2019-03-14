@@ -2,10 +2,12 @@
 
 Small single-header C++ library that renders Windows fonts in graphics applications.
 
-Author: Adam Sawicki - http://asawicki.info  
-Version: 1.0.0, 2019-03-14
+**Author:** Adam Sawicki - http://asawicki.info  
+**Version:** 1.0.0, 2019-03-14
 
-Documentation: see below and comments in the code of [WinFontRender.h](WinFontRender.h) file. 
+**Documentation:** see below and comments in the code of [WinFontRender.h](WinFontRender.h) file. 
+
+**Build status:** [![Build status](https://ci.appveyor.com/api/projects/status/w5k9cseltbleioaa/branch/master?svg=true)](https://ci.appveyor.com/project/sawickiap/winfontrender/branch/master)
 
 ## Problem
 
