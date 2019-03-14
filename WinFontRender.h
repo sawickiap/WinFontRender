@@ -6,7 +6,6 @@ Small single-header C++ library that renders Windows fonts in graphics applicati
 
 Author:  Adam Sawicki - http://asawicki.info - adam__DELETE__@asawicki.info
 Version: 1.0.0, 2019-03-14
-License: modified MIT
 
 Documentation: see README.md and comments in the code below.
 
@@ -16,8 +15,6 @@ Documentation: see README.md and comments in the code below.
 First version.
 
 # License
-
-Modified MIT License
 
 Copyright (c) 2019 Adam Sawicki
 
