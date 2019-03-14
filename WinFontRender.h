@@ -1700,6 +1700,10 @@ void CFont::GetTextVertices(const SVertexBufferDesc& vbDesc,
 
 #include <cassert>
 
+// Just in case <Windows.h> was included before without #define NOMINMAX
+#undef min
+#undef max
+
 namespace WinFontRender
 {
 
