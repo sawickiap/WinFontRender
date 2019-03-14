@@ -139,6 +139,10 @@ d3d11Context->Draw((UINT)vertexCount, 0);
 
 ## Additional consideration
 
+**Multiline** text is supported with explicit line breaks on `'\n'`, `"\r\n"`, as well as automatic word wrap on whole word boundaries (with `FLAG_WRAP_WORD` is used) or single character boundaries (with `FLAG_WRAP_CHAR` is used) when text width is limited.
+
+**Horizontal and vertical alignment** is supported to left/center/right, top/middle/bottom - see flags `FLAG_HLEFT` etc.
+
 **Texture coordinates** are configurable. By default a coordinate system is assumed that samples textures from left-top as (0, 0), like in DirectX or Vulkan. You can use `FLAG_TEXTURE_FROM_LEFT_BOTTOM` to change it to a coordinate system where textures are sampled from left-bottom as (0, 0), like in OpenGL.
 
 **Vertex format** is flexible. Positions and texture coordinates must be pairs of floats, but you can fill structure `SVertexBufferDesc` with parameters describing your positions and texture coordinates in same or separate streams and with any vertex stride.
