@@ -1131,8 +1131,8 @@ struct SFontDesc
     // Bit flags that describe various parameters of created font.
     enum FLAGS
     {
-        FLAG_BOLD      = 0x1,
-        FLAG_ITALIC    = 0x2,
+        FLAG_BOLD   = 0x1,
+        FLAG_ITALIC = 0x2,
 
         // Set this flag if texture coordinates start from left bottom corner as (0, 0), like in OpenGL.
         // Without this flag texture coordinates start from left top corner as (0, 0), like in DirectX and Vulkan.
@@ -1175,18 +1175,18 @@ public:
         // No line breaks, just a single line. Works fast.
         FLAG_WRAP_SINGLE_LINE = 0x1,
         // Break lines only on explicit line end character '\n'.
-        FLAG_WRAP_NORMAL     = 0x2,
+        FLAG_WRAP_NORMAL      = 0x2,
         // Also wrap lines automatically, on single character boundaries.
-        FLAG_WRAP_CHAR       = 0x4,
+        FLAG_WRAP_CHAR        = 0x4,
         // Also wrap lines automatically, on whole word boundaries if posible.
-        FLAG_WRAP_WORD       = 0x8,
+        FLAG_WRAP_WORD        = 0x8,
 
         // # Use any combination.
 
-        FLAG_UNDERLINE = 0x10,
+        FLAG_UNDERLINE        = 0x10,
         FLAG_DOUBLE_UNDERLINE = 0x20,
-        FLAG_OVERLINE  = 0x40,
-        FLAG_STRIKEOUT = 0x80,
+        FLAG_OVERLINE         = 0x40,
+        FLAG_STRIKEOUT        = 0x80,
 
         // # Horizontal alignmne.t Use only one.
 
@@ -2210,10 +2210,6 @@ bool CFont::LineSplit(
 {
     assert(ValidateFlags(flags));
 
-    /*
-    I write this algorithm like 3rd time in my life already.
-    Every time I do it faster and better, still it's very difficult and compliated for me.
-    */
     const size_t textLen = text.length();
 
     if (*inoutIndex >= textLen)
