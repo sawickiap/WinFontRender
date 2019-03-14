@@ -28,8 +28,8 @@ This library provides solution to this problem by implementing a `CFont` class, 
 - It depends only on standard C and C++ library (including some basic STL - `std::vector`, `std::wstring`) and WinAPI (Windows.h).
 - It is agnostic to graphics API. It only provides CPU buffer with data that you need to upload to the GPU as a texture, and fills your CPU buffer with data that you need to render as vertex and index buffer. It is your responsibility to do actual rendering using API of your choice, whether it's Direct3D 9, 11, 12, OpenGL, or Vulkan.
 - It uses a font installed in the system, based on given name and other parameters (e.g. "Arial", size = 32, bold). It cannot load fonts from existing textures or standalone font files. If you need the latter, [FreeType](https://www.freetype.org/) is a popular library for this.
-- It is intended for usage on Windows. Linux, MacOS, Android, or any other platforms are not supported.
-- It is developed tested in Microsoft Visual Studio 2017 in 64-bit configuration. Theoretically it should work in 32-bit configuration or with other compilers.
+- It is intended for usage on Windows only. Linux, MacOS, Android, or any other platforms are not supported.
+- It is developed and tested in Microsoft Visual Studio 2017 in 64-bit configuration. Theoretically it should work in 32-bit configuration or with other compilers.
 - It uses Unicode strings, like `const wchar_t*` or `std::wstring`. If you prefer ANSI or UTF-8, you need to convert them first, e.g. using WinAPI function `MultiByteToWideChar`.
 - Example project is included that demonstrates usage of the library in a simple Direct3D 11 application:
 
@@ -43,7 +43,7 @@ This library provides solution to this problem by implementing a `CFont` class, 
 
 To do it properly:
 
-1. Include "WinFontRender.h" file in each CPP file where you want to use the library. This includes declarations of all members of the library.
+1. Include "WinFontRender.h" file in each CPP file where you want to use the library. This includes declarations of all public members of the library.
 2. In exacly one CPP file define following macro before this include. It enables internal implementation (function definitions).
 
 ```cpp
@@ -75,7 +75,7 @@ font->Init(fontDesc);
 - `Height` is font size, in pixels.
 - `Flags` can include flags from `SFontDesc::FLAGS` enum, e.g. `SFontDesc::FLAG_BOLD`, `SFontDesc::FLAG_ITALIC`.
 
-Don't forget to delete `delete font` at the end.
+Don't forget to `delete font` at the end.
 
 ### 3. Creating texture
 
@@ -98,7 +98,7 @@ font->FreeTextureData();
 
 ### 4. Filling vertex buffer and rendering
 
-You can design your own vertex structure. You need to allocate vertex and optional index buffer and pass their parameters to the font, so they can be filled with data for given text.
+You can use your own vertex structure. You need to allocate vertex and optional index buffer and pass their parameters to the font, so they can be filled with data for given text.
 
 ```cpp
 struct SVertex
@@ -139,27 +139,27 @@ d3d11Context->Draw((UINT)vertexCount, 0);
 
 ## Additional consideration
 
-**Multiline** text is supported with explicit line breaks on `'\n'`, `"\r\n"`, as well as automatic wrap on whole word boundaries (with `CFont::FLAG_WRAP_WORD` used) or single character boundaries (with `CFont::FLAG_WRAP_CHAR` used) when text width is limited.
+**Multiline text** is supported with explicit line breaks on `'\n'`, `"\r\n"`, as well as automatic wrap on whole word boundaries (with `CFont::FLAG_WRAP_WORD` used) or single character boundaries (with `CFont::FLAG_WRAP_CHAR` used) when text width is limited.
 
-**Horizontal and vertical alignment** is supported to left/center/right, top/middle/bottom. Use flags `CFont::FLAG_HLEFT`, `CFont::FLAG_HCENTER`, `CFont::FLAG_HRIGHT`, `CFont::FLAG_VTOP`, `CFont::FLAG_VMIDDLE`, `CFont::FLAG_VBOTTOM`.
-
-**Texture coordinates** are configurable. By default a coordinate system is assumed that samples textures from left-top as (0, 0), like in DirectX or Vulkan. You can use `SFontDesc::FLAG_TEXTURE_FROM_LEFT_BOTTOM` to change it to a coordinate system where textures are sampled from left-bottom as (0, 0), like in OpenGL.
+**Horizontal and vertical alignment** is supported to left/center/right and top/middle/bottom. Use flags `CFont::FLAG_HLEFT`, `CFont::FLAG_HCENTER`, `CFont::FLAG_HRIGHT`, `CFont::FLAG_VTOP`, `CFont::FLAG_VMIDDLE`, `CFont::FLAG_VBOTTOM`.
 
 **Vertex format** is flexible. Positions and texture coordinates must be pairs of floats. You can fill structure `SVertexBufferDesc` with parameters describing your positions and texture coordinates laid out in the same or separate streams and with any vertex strides.
 
-Various **vertex topologies** are supported. By using `VERTEX_BUFFER_FLAG_*` flags, you can request vertices generated as triangle list, triangle strip with primitive restart index, or triangle strip with degenerate triangles. You can also use 16-bit indices, 32-bit indices, or no index buffer. These flags needs to be known at compile time, because they are template parameter, for performance reason.
+Various **vertex topologies** are supported. By using `VERTEX_BUFFER_FLAG_*` flags, you can request vertices generated as triangle list, triangle strip with primitive restart index, or triangle strip with degenerate triangles. You can also use 16-bit indices, 32-bit indices, or no index buffer. These flags need to be known at compile time because they are template parameter, for performance reason.
 
 **Vertex positions** are assumed to be expressed in pixels, from left-top as (0, 0). All triangles have clockwise winding.
 
+**Texture coordinates** are configurable. By default a coordinate system is assumed that samples textures from left-top as (0, 0), like in DirectX or Vulkan. You can use `SFontDesc::FLAG_TEXTURE_FROM_LEFT_BOTTOM` to change it to a coordinate system where textures are sampled from left-bottom as (0, 0), like in OpenGL.
+
 **Texture format** is always single component, 8 bits per pixel. It can be interpreted as `DXGI_FORMAT_R8_UNORM` or `DXGI_FORMAT_A8_UNORM`.
 
-Among various **advanced font features**, the library supports kerning, which is handled automatically. It doesn't support ligatures, colourful emoji, right-to-left or other complex writing systems like Hindi, Arabic, Hebrew etc.
-
-Fonts are **pixel-perfect**, which means they are not scaled and filtered and they look good, as long as you use the same value as `fontSize` parameter while rendering and `SFontDesc::Height` while creating the font. It makes even small fonts looking quite good and clear.
-
-![Small font](README_files/SmallFont.png "Small font")
+Among various **advanced font features**, the library supports **kerning**, which is handled automatically. It doesn't support ligatures, colourful emoji, right-to-left or other complex writing systems like Hindi, Arabic, Hebrew etc.
 
 Fonts use **antialiasing**, which means edges are smoothed with many shaders of gray, not just 0 or 1. Sub-pixels antialiasing (on the level of separate RGB monitor subpixels) is not supported.
+
+Fonts are **pixel-perfect**, which means they are not scaled and filtered, as long as you use the same value as `fontSize` parameter while rendering and `SFontDesc::Height` while creating the font. It makes even small fonts looking quite good and clear.
+
+![Small font](README_files/SmallFont.png "Small font")
 
 **Underlines** can be added using `CFont::FLAG_*` flags in many flavors - as `CFont::FLAG_UNDERLINE`, `CFont::FLAG_OVERLINE`, `CFont::FLAG_STRIKEOUT`, and even `CFont::FLAG_DOUBLE_UNDERLINE`:
 
@@ -206,6 +206,6 @@ font->Init(fontDesc);
 
 **Error handling** is very simple. It doesn't use C++ exceptions. The only function that can fail is `CFont::Init`. It just returns `bool`.
 
-**Performance** of vertex generation should be quite good, suitable for calling every frame. `CFont::FLAG_WRAP_SINGLE_LINE` is the fastest mode. `CFont::FLAG_VMIDDLE` and `CFont::FLAG_VBOTTOM` are slow.
+**Performance** of vertex generation should be quite good, suitable for calling every frame. `CFont::FLAG_WRAP_SINGLE_LINE` is the fastest mode, and so are the functions with "SingleLine" in their names. `CFont::FLAG_VMIDDLE` and `CFont::FLAG_VBOTTOM` are slow.
 
-**Thread safety** is ensured because there is no unexpected global state. Different objects of `CFont` class can be created by different threads and used simultaneously. Calling `const` methods of a single `CFont` object from different threads simultaneously is also safe.
+**Thread safety** is ensured as there is no unexpected global state. Different objects of `CFont` class can be created by different threads and used simultaneously. Calling `const` methods of a single `CFont` object from different threads simultaneously is also safe.
