@@ -207,7 +207,7 @@ fontDesc.CharRanges = charRanges;
 font->Init(fontDesc);
 ```
 
-![Nonstandard Unicode characters](README_files/Diacritics.png "Nonstandard Unicode characters")
+![Nonstandard Unicode characters](README_files/Diacritics_2.png "Nonstandard Unicode characters")
 
 **Hit testing** is available. Methods `CFont::HitTestSingleLine` and `CFont::HitTest` provide a test of point (e.g. mouse cursor position) against text. They return index of the character that is hit at this point.
 
