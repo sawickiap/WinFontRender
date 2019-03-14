@@ -1,6 +1,11 @@
 # WinFontRender
 
-This is a small single-header C++ library that renders Windows fonts in graphics applications.
+Small single-header C++ library that renders Windows fonts in graphics applications.
+
+Author: Adam Sawicki - http://asawicki.info  
+Version: 1.0.0, 2019-03-14
+
+Documentation: see below and comments in the code of `WinFontRender.h` file. 
 
 ## Problem
 

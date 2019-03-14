@@ -1,3 +1,46 @@
+/*
+
+WinFontRender
+
+Small single-header C++ library that renders Windows fonts in graphics applications.
+
+Author:  Adam Sawicki - http://asawicki.info - adam__DELETE__@asawicki.info
+Version: 1.0.0, 2019-03-14
+License: modified MIT
+
+Documentation: see README.md and comments in the code below.
+
+# Version history
+
+- Version 1.0.0, 2019-03-14
+First version.
+
+# License
+
+Modified MIT License
+
+Copyright (c) 2019 Adam Sawicki
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software. A notice about using the
+Software shall be included in both textual documentation and in About/Credits
+window or screen (if one exists) within the software that uses it.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 #ifndef WIN_FONT_RENDER_H
 #define WIN_FONT_RENDER_H
 
