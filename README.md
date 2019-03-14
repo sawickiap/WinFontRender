@@ -5,7 +5,7 @@ Small single-header C++ library that renders Windows fonts in graphics applicati
 Author: Adam Sawicki - http://asawicki.info  
 Version: 1.0.0, 2019-03-14
 
-Documentation: see below and comments in the code of `WinFontRender.h` file. 
+Documentation: see below and comments in the code of [WinFontRender.h](WinFontRender.h) file. 
 
 ## Problem
 
@@ -158,7 +158,7 @@ Various **vertex topologies** are supported. By using `VERTEX_BUFFER_FLAG_*` fla
 
 **Texture format** is always single component, 8 bits per pixel. It can be interpreted as `DXGI_FORMAT_R8_UNORM` or `DXGI_FORMAT_A8_UNORM`.
 
-Among various **advanced font features**, the library supports **kerning**, which is handled automatically. It doesn't support ligatures, colourful emoji, right-to-left or other complex writing systems like Hindi, Arabic, Hebrew etc.
+Among various advanced font features, the library supports **kerning**, which is handled automatically. It doesn't support ligatures, colourful emoji, right-to-left or other complex writing systems like Hindi, Arabic, Hebrew etc.
 
 Fonts use **antialiasing**, which means edges are smoothed with many shaders of gray, not just 0 or 1. Sub-pixels antialiasing (on the level of separate RGB monitor subpixels) is not supported.
 
