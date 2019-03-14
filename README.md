@@ -6,7 +6,7 @@ This is a small, easy to use, single-header C++ library that renders Windows fon
 
 While developing various kinds of programs, we often take the possibility of displaying text for granted, as we get this functionality out-of-the-box. This is the case in console apps, where we can just print characters and they are displayed in the terminal. This is also the case in GUI apps, whether made in Windows Forms, WPF, Qt, wxWidgets, MFC - we have labels, buttons, and other controls available.
 
-However, this is not the case when we develop a graphics program or a game using one of the graphics API like Direct3D, OpenGL, or Vulkan. Then the only thing we can do is rendering triangles covered with textures. That's how graphics cards work after all. Displaying text is challenging in this environment, as every single character has to be turned into a textured quad, each made of two triangles.
+However, this is not the case when we develop a graphics program or a game using one of the graphics API like Direct3D, OpenGL, or Vulkan. Then the only thing we can do is rendering triangles covered with textures. That's how graphics cards work after all. Displaying text is challenging in this environment, as every single character has to be turned into a textured quad made of two triangles.
 
 ## Solution
 
@@ -22,8 +22,8 @@ This library provides solution to this problem by implementing a `CFont` class, 
 
 ## Prerequisites
 
-- The library written in object-oriented C++. No advanced template trickery is used, but some C++11 features may appear.
-- It has form of a single file "WinFontRender.h", which you can copy to your project. Everything else is just example usage code, documentation, license etc.
+- The library is written in object-oriented C++. No advanced template trickery is used, but some C++11 features may appear.
+- It has form of a single file "WinFontRender.h", which you can just copy to your project. Everything else is example usage code, documentation, license etc.
 - It is based on slightly modified MIT license, so it's free to use in any projects, including closed-source, proprietary, and commercial. See [LICENSE](LICENSE) for details.
 - It depends only on standard C and C++ library (including some STL) and Windows.h. 
 - It is agnostic to graphics API. It only provides CPU buffer with data that you need to upload to the GPU as a texture, and fills your CPU buffer with data that you need to render as vertex and index buffer. It is your responsibility to do actual rendering using graphics API of your choice, whether it's Direct3D 9, 11, 12, OpenGL, or Vulkan.
@@ -57,7 +57,7 @@ The library defines two sets of helpers types. First one is `wstr_view` type, wh
 
 All symbols other than the string view mentioned above are defined in namespace `WinFontRender`.
 
-Second set of helper types are very simple vector structures: `bvec2`, `bvec4` (for `bool`), `ivec2`, `ivec4` (for `int`), `uvec2`, `uvec4` (for `unsigned int`) and `vec2`, `vec4` (for `float` - the main ones). Basic thing to remember about them is that you can construct them by either specifying separate components, like `vec2(1.0f, 2.0f)`, or by passing pointer to the array of components.
+Second set of helper types are very simple vector structures: `bvec2`, `bvec4` (for `bool`), `ivec2`, `ivec4` (for `int`), `uvec2`, `uvec4` (for `unsigned int`) and `vec2`, `vec4` (for `float`). Basic thing to remember about them is that you can construct them by either specifying separate components, like `vec2(1.0f, 2.0f)`, or by passing pointer to the array of components.
 
 ### 2. Creating font object
 
@@ -90,14 +90,15 @@ font->GetTextureData(data, size, rowPitch);
 CD3D11_TEXTURE2D_DESC textureDesc = CD3D11_TEXTURE2D_DESC(
     DXGI_FORMAT_A8_UNORM, size.x, size.y, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE);
 D3D11_SUBRESOURCE_DATA initialData = {data, (UINT)rowPitch, 0};
-d3d11Device->CreateTexture2D(&textureDesc, &initialData, &m_Texture);
+ID3D11Texture* texture;
+d3d11Device->CreateTexture2D(&textureDesc, &initialData, &texture);
 
 font->FreeTextureData();
 ```
 
 ### 4. Filling vertex buffer and rendering
 
-You can design your own vertex structure, allocate vertex and optional index buffer, and pass its parameters to the font.
+You can design your own vertex structure, allocate vertex and optional index buffer, and pass its parameters to the font, so they can be filled with data for given text.
 
 ```cpp
 struct SVertex
@@ -150,7 +151,7 @@ Various **vertex topologies** are supported. By using `VERTEX_BUFFER_FLAG_*` fla
 
 Among various **advanced font features**, the library supports kerning, which is handled automatically. It doesn't support ligatures, colourful emoji, right-to-left or other complex writing systems like Hindi, Arabic, Hebrew etc.
 
-Fonts are **pixel-perfect**, which means they are not scaled and filtered and they look good, as long as you use same value as `fontSize` parameter as you used as `SFontDesc::Height`.
+Fonts are **pixel-perfect**, which means they are not scaled and filtered and they look good, as long as you use same value of `fontSize` parameter as you specified `SFontDesc::Height`.
 
 Fonts use **antialiasing**, which means edges are smoothed with many shaders of gray, not just 0 or 1. Sub-pixels antialiasing (on the level of separate RGB monitor subpixels) is not supported.
 
@@ -161,7 +162,7 @@ Fonts use **antialiasing**, which means edges are smoothed with many shaders of 
 ![Double underline](README_files/DoubleUnderline.png "Double underline")
 
 
-Not all 65536 **Unicode characters** are rendered to texture. By default this are only characters in range 32..127. You can choose which ones are rendered to support diacritic letters of your language or some other symbols that you need. To do it, you need to specify custom character ranges when initializing a font:
+Not all 65536 **Unicode characters** are rendered to texture. By default these are only characters in range 32..127. You can choose which ones are rendered to support diacritic letters of your language or some other symbols that you need. To do it, you need to specify custom character ranges when initializing a font:
 
 ```cpp
 const wchar_t charRanges[] = {

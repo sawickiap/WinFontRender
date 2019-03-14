@@ -7,7 +7,7 @@ struct VsInput
 
 struct VsOutput
 {
-	float4 Pos: SV_Position;
+    float4 Pos: SV_Position;
     float2 TexCoord: TexCoord;
     float4 Color: Color;
 };
